@@ -148,7 +148,7 @@
 
         const value = String(getBadgeChild(e));
         const key = value.trim().toLowerCase();
-        setSelectedSectors((prev) => {
+        setSelectedProducts((prev) => {
           const next = new Map(prev);
           if (next.has(key)) {
             next.delete(key);
@@ -165,7 +165,7 @@
         const key = value.trim().toLowerCase();
 
         debugLog('Value from interaction:', filterValue);
-        setSelectedProducts((prev) => {
+        setSelectedTopics((prev) => {
           const next = new Map(prev);
           if (next.has(key)) {
             next.delete(key);

@@ -1,4 +1,5 @@
 const travelPath = (object, path) => {
+  if (!path) return object;
   const keys = path.split(".");
   let result = object;
   for (const key of keys) {
@@ -7,7 +8,6 @@ const travelPath = (object, path) => {
   return result;
 };
 const arrayFilter = async ({ array, path, value, operator, valueIsDate }) => {
-  console.log({ array });
   if (!array || !value || !operator) {
     console.log({ array, path, value, operator });
     throw new Error(
@@ -43,7 +43,7 @@ const arrayFilter = async ({ array, path, value, operator, valueIsDate }) => {
     if (typeof item === "number") {
       return filterFn(item, Number(value));
     }
-    const itemValue = travelPath(item, path);
+    const itemValue = path ? travelPath(item, path) : item;
 
     if (typeof itemValue === "string") {
       if (valueIsDate) {

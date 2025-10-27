@@ -13,10 +13,9 @@
       }
     };
 
-    const [filterTopic, setFilterTopic] = useState({}); // Employee Name
-    const [filterSector, setFilterSector] = useState({}); // Employee Date Of birth
-
-    const [filterProduct, setFilterProduct] = useState({}); // Effective Date
+    const [filterTopic, setFilterTopic] = useState({});
+    const [filterSector, setFilterSector] = useState({});
+    const [filterProduct, setFilterProduct] = useState({});
     const [filterSearch, setFilterSearch] = useState({});
 
     const [filterStatus, setFilterStatus] = useState({});
