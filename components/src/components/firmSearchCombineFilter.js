@@ -113,10 +113,12 @@
     useEffect(() => {
       B.defineFunction('setFilterCountry', (v) => {
         debugLog('setFilterCountry', { value: v });
-        if (v.name) {
+        console.log({v})
+        if (v && v.name) {
           const filter = v ? { country: { eq: v.name } } : undefined;
           setFilterCountry(filter);
         } else {
+          setFilterCountry({})
           console.error(
             "Country onChange interaction should be an object with a 'name' key",
           );

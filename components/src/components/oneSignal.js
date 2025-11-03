@@ -42,7 +42,6 @@
 
       B.defineFunction('Enable push notifications', () => {
         window.OneSignalDeferred.push((OneSignal) => {
-          \
           OneSignal.User.PushSubscription.optIn();
         });
       });
