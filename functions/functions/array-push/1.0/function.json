@@ -11,7 +11,8 @@
       "name": "array",
       "label": "Array",
       "meta": {
-        "type": "Collection"
+        "type": "Value",
+        "allowedKinds": ["ARRAY", "COLLECTION"]
       },
       "info": "The array to push the new value into."
     },
@@ -27,7 +28,17 @@
       "name": "data",
       "label": "Value",
       "meta": {
-        "type": "Number",
+        "type": "Value",
+        "allowedKinds": [
+          "ARRAY",
+          "COLLECTION",
+          "BOOLEAN",
+          "INTEGER",
+          "JSON",
+          "OBJECT",
+          "RECORD",
+          "STRING"
+        ],
         "validations": {
           "required": true
         }

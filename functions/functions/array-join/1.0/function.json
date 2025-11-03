@@ -11,12 +11,13 @@
       "name": "array",
       "label": "Array",
       "meta": {
-        "type": "Collection",
+        "type": "Value",
+        "allowedKinds": ["ARRAY", "COLLECTION"],
         "validations": {
           "required": true
         }
-      } ,  
-      "info": "The array to join." 
+      },
+      "info": "The array to join."
     },
     {
       "name": "separator",
@@ -33,10 +34,7 @@
       "name": "path",
       "label": "Path",
       "meta": {
-        "type": "Text",
-        "validations": {
-          "required": true
-        }
+        "type": "Text"
       },
       "info": "If the array is an array of objects, the path to join on. If not provided, the array will be joined directly."
     },

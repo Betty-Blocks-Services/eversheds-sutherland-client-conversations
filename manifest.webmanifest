@@ -1,0 +1,64 @@
+{
+  "id": "es_client_conversations",
+  "name": "Client Conversations",
+  "short_name": "Client Conversations",
+  "description": "This app gives Eversheds Sutherland lawyers a secure mobile hub to access client insights, business trends, alumni updates, and referral firm contacts in one place.",
+  "start_url": "/?source=pwa",
+  "_start_url_developerexplanation": "Defines which page the PWA loads first when opened. We include ?source=pwa so analytics can distinguish app launches from normal site visits.",
+  "scope": "/",
+  "_scope_developerexplanation": "Limits the navigable area of the app. With '/' the PWA can open any page on the domain inside the standalone app window.",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "_display_developerexplanation": "standalone means that the app will behave like a native app without any browser UI",
+  "background_color": "#ffffff",
+  "theme_color": "#002D72",
+  "lang": "en",
+  "dir": "ltr",
+  "orientation": "portrait",
+  "version": "1.0",
+  "categories": ["Tech", "News"],
+  "icons": [
+    {
+      "src": "https://assets.eu.bettyblocks.com/eu-central-1-8fccac5018ed49feac2d9d290a9217d0/assets/files/ESicon192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "https://assets.eu.bettyblocks.com/eu-central-1-8fccac5018ed49feac2d9d290a9217d0/assets/files/ESicon512",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "https://assets.eu.bettyblocks.com/eu-central-1-8fccac5018ed49feac2d9d290a9217d0/assets/files/ESicon192",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "https://assets.eu.bettyblocks.com/eu-central-1-8fccac5018ed49feac2d9d290a9217d0/assets/files/ESicon512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "https://assets.eu.bettyblocks.com/eu-central-1-8fccac5018ed49feac2d9d290a9217d0/assets/files/logo_svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "_icons_developerexplanation": "Maskable icons ensure the logo looks correct across devices with different icon shapes (circle, squircle, etc.), avoiding automatic cropping that may cut off branding.",
+  "protocol_handlers": [
+    {
+      "name": "Client Conversations PWA",
+      "protocol": "web+clientconvos",
+      "uriTemplate": "/pwa-deeplink?content_id=%s"
+    }
+  ],
+  "_protocol_handlers_developerexplanation": "Registers custom links like web+clientconvos://123. If the PWA is installed, you can link to <a href='web+clientconvos:512'> and these will open inside the app at /pwa-deeplink?content_id=123. This enables us to use 'open in app' and 'open in browser' buttons seperately"
+}

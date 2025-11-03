@@ -12,10 +12,18 @@
       "label": "Array A",
       "meta": {
         "type": "Value",
-        "allowedKinds": ["ARRAY"],
+        "allowedKinds": ["ARRAY", "COLLECTION"],
         "validations": {
           "required": true
         }
+      }
+    },
+    {
+      "name": "pathA",
+      "label": "Path A",
+      "meta": {
+        "type": "Text",
+        "placeholder": "id"
       }
     },
     {
@@ -23,8 +31,17 @@
       "label": "Array B",
       "meta": {
         "type": "Value",
-        "allowedKinds": ["ARRAY"],
+        "allowedKinds": ["ARRAY", "COLLECTION"],
         "validations": { "required": true }
+      }
+    },
+
+    {
+      "name": "pathB",
+      "label": "Path B",
+      "meta": {
+        "type": "Text",
+        "placeholder": "id"
       }
     },
     {
@@ -40,7 +57,9 @@
       "meta": {
         "type": "Output",
         "output": {
-          "type": "Text"
+          "schemaModel": "schema",
+          "dataType": "SCHEMA",
+          "type": "Array"
         }
       }
     }

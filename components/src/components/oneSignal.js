@@ -5,18 +5,17 @@
   orientation: 'HORIZONTAL',
   jsx: (() => {
     const { env, useText } = B;
-    const { appId } = options;
+    const { appId, debugLogging } = options;
 
     const isDev = env === 'dev';
     const appIdText = useText(appId);
 
-    function addScript(content, type = 'url') {
-      if (content) {
-        var script = document.createElement('script');
-        if (content.startsWith('http')) {
-          script.src = url;
-        } else {
-          script.textContent = content;
+    function addScript(url, callback) {
+      if (url) {
+        const script = document.createElement('script');
+        script.src = url;
+        if (callback && typeof callback === 'function') {
+          script.onload = callback;
         }
         document.head.appendChild(script);
       }
@@ -24,48 +23,38 @@
 
     const url = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
 
-    console.log({ isDev, appIdText });
     useEffect(() => {
       if (isDev) return;
 
-      addScript(url);
-      addScript(
-        `
+      addScript(url, () => {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
-        window.OneSignalDeferred.push(async function (OneSignal) {
+        window.OneSignalDeferred.push(async (OneSignal) => {
+          if (debugLogging) {
+            OneSignal.Debug.setLogLevel('trace');
+          }
           await OneSignal.init({
-            appId: String("${appIdText}").trim(),
+            appId: appIdText,
           });
         });
-      `,
-        'script',
-      );
+      });
+
+      if (!window.OneSignalDeferred) return;
 
       B.defineFunction('Enable push notifications', () => {
-        window.OneSignalDeferred.push(function (OneSignal) {
-          OneSignal.Notifications.requestPermission();
+        window.OneSignalDeferred.push((OneSignal) => {
+          \
           OneSignal.User.PushSubscription.optIn();
         });
       });
 
       B.defineFunction('Disable push notifications', () => {
-        window.OneSignalDeferred.push(function (OneSignal) {
+        window.OneSignalDeferred.push((OneSignal) => {
           OneSignal.User.PushSubscription.optOut();
         });
       });
 
-      B.defineFunction('Show push notification prompt', () => {
-        const status = Notification.permission;
-
-        if (status === 'default') {
-          window.OneSignalDeferred.push(async function (OneSignal) {
-            await OneSignal.Notifications.requestPermission();
-          });
-        } else if (status === 'granted') {
-          alert('Notifications already granted');
-        } else if (status === 'denied') {
-          alert('Notifications blocked');
-        }
+      window.OneSignalDeferred.push((OneSignal) => {
+        B.triggerEvent('onInit', OneSignal.User.PushSubscription.optedIn);
       });
     }, []);
 

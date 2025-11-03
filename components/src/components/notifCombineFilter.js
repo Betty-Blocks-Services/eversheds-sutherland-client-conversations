@@ -1,11 +1,12 @@
 (() => ({
-  name: 'FirmSearchCombineFilter',
+  name: 'NotifCombineFilter',
   type: 'CONTENT_COMPONENT',
   allowedTypes: [],
   orientation: 'HORIZONTAL',
   jsx: (() => {
-    const isDev = B.env === 'dev';
-    const { debugLogging } = options;
+    const { debugLogging, modelId } = options;
+    const { env } = B;
+    const isDev = env === 'dev';
 
     const debugLog = (message) => {
       if (debugLogging) {
@@ -13,38 +14,84 @@
       }
     };
 
-    const [filterCountry, setFilterCountry] = useState({});
-    const [filterPreferred, setFilterPreferred] = useState({});
-    const [filterSearch, setFilterSearch] = useState({});
+    // ------------ schema builder (P_UUID) ------------
+    function buildRelationalMap(
+      propertiesById,
+      rootModelId,
+      { depth = 1 } = {},
+    ) {
+      const ALL = Object.values(propertiesById);
+      const propsByModel = new Map();
+      for (const p of ALL) {
+        if (!propsByModel.has(p.modelId)) propsByModel.set(p.modelId, []);
+        propsByModel.get(p.modelId).push(p);
+      }
 
-    // This function translates the normal database names to the correspdoning identifiers
-    // to use with the Advanced Filter interaction provided by the platform.
-    function translateKeys(input, availableProps) {
-      // build name → id lookup
-      const nameToId = Object.values(availableProps).reduce((map, prop) => {
-        map[prop.name] = prop.id;
-        return map;
-      }, {});
+      const REL_KINDS = new Set([
+        'belongs_to',
+        'has_many',
+        'has_and_belongs_to_many',
+      ]);
 
-      function recurse(node) {
-        // 1) arrays: map each element
-        if (Array.isArray(node)) {
-          return node.map(recurse);
+      function makeNode(modelId, d, visiting) {
+        const props = propsByModel.get(modelId) || [];
+        const node = {};
+
+        for (const p of props) {
+          // Store the UUID under P_UUID (never "id")
+          node[p.name] = { P_UUID: p.id };
+
+          // Expand relations
+          if (REL_KINDS.has(p.kind) && p.referenceModelId && d > 0) {
+            const toModel = p.referenceModelId;
+            if (!visiting.has(toModel)) {
+              visiting.add(toModel);
+              const child = makeNode(toModel, d - 1, visiting);
+              // merge children (keep P_UUID alongside)
+              Object.assign(node[p.name], child);
+              visiting.delete(toModel);
+            }
+          }
         }
-        // 2) objects: rename keys if possible, recurse values
-        if (node && typeof node === 'object') {
-          return Object.keys(node).reduce((out, key) => {
-            const newKey = nameToId[key] || key;
-            out[newKey] = recurse(node[key]);
-            return out;
-          }, {});
-        }
-        // 3) primitives: return as‐is
         return node;
       }
 
-      return recurse(input);
+      return makeNode(rootModelId, depth, new Set([rootModelId]));
     }
+
+    // ------------ translator (uses P_UUID) ------------
+    function translateWithRelationalMap(input, schemaNode) {
+      if (Array.isArray(input)) {
+        return input.map((v) => translateWithRelationalMap(v, schemaNode));
+      }
+      if (input && typeof input === 'object') {
+        const out = {};
+        for (const key of Object.keys(input)) {
+          const val = input[key];
+
+          // If key exists in schema, translate to its P_UUID; else keep key as-is (operators, etc.)
+          const entry = schemaNode?.[key];
+          const newKey = entry?.P_UUID || key;
+
+          // Child schema = all children except P_UUID
+          let childSchema = schemaNode;
+          if (entry && typeof entry === 'object') {
+            childSchema = Object.fromEntries(
+              Object.entries(entry).filter(([k]) => k !== 'P_UUID'),
+            );
+          }
+
+          out[newKey] = translateWithRelationalMap(val, childSchema);
+        }
+        return out;
+      }
+      return input;
+    }
+    const properties = isDev ? {} : window.artifact.properties || {};
+
+    const relationalMap = buildRelationalMap(properties, modelId);
+    const [filterTitle, setFilterTitle] = useState({});
+    const [filterStatus, setFilterStatus] = useState({});
 
     function deepMerge(A, B) {
       const OPS = new Set([
@@ -100,46 +147,19 @@
       }, {});
     }
 
-    const getBadgeChild = (e) => {
-      const badge = e.currentTarget;
-      const data = badge.childNodes[0].getHTML();
-      return String(data).trim();
-    };
-
     // This is where each of the fields are defined.
     // By defining these functions, each field can have its own logic for applying the filter.
-    // Thse functions create the initial filter object.
+    // These functions create the initial filter object.
 
     useEffect(() => {
-      B.defineFunction('setFilterCountry', (v) => {
-        debugLog('setFilterCountry', { value: v });
-        if (v.name) {
-          const filter = v ? { country: { eq: v.name } } : undefined;
-          setFilterCountry(filter);
-        } else {
-          console.error(
-            "Country onChange interaction should be an object with a 'name' key",
-          );
-        }
+      B.defineFunction('setFilterTitle', (v) => {
+        const filter = v ? { title: { eq: v } } : undefined;
+        setFilterTitle(filter);
       });
 
-      B.defineFunction('toggleFilterPrefOn', () => {
-        debugLog('toggleFilterPrefOn');
-        setFilterPreferred({ preferred: { eq: true } });
-      });
-      B.defineFunction('toggleFilterPrefAllOn', () => {
-        debugLog('toggleFilterPrefAllOn');
-        setFilterPreferred(undefined);
-      });
-      B.defineFunction('toggleFilterPrefAltOn', () => {
-        debugLog('toggleFilterPrefAltOn');
-        setFilterPreferred({ preferred: { eq: false } });
-      });
-
-      B.defineFunction('setFilterSearch', (v) => {
-        debugLog('setFilterSearch', { value: v });
-        const filter = v ? { name: { matches: v } } : undefined;
-        setFilterSearch(filter);
+      B.defineFunction('setFilterStatus', (v) => {
+        const filter = v ? { status: { eq: v } } : undefined;
+        setFilterStatus(filter);
       });
     }, []);
 
@@ -157,9 +177,8 @@
       //  }
       // }
       const newFilter = {
-        ...filterCountry,
-        ...filterSearch,
-        ...filterPreferred,
+        ...filterTitle,
+        ...filterStatus,
       };
 
       debugLog({ newFilter });
@@ -178,9 +197,9 @@
       //     }
       //   }
       // }
-      const translatedFilter = translateKeys(
+      const translatedFilter = translateWithRelationalMap(
         newFilter,
-        window.artifact.properties,
+        relationalMap,
       );
 
       debugLog({ translatedFilter });
@@ -194,7 +213,7 @@
       } else {
         B.triggerEvent('onFilterChange', undefined);
       }
-    }, [filterCountry, filterPreferred, filterSearch]);
+    }, [filterStatus, filterTitle]);
 
     if (isDev) {
       return <div className={classes.dev}>Combine filter</div>;

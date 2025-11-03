@@ -315,13 +315,11 @@
       if (!loading && !isDev) {
         const rows = data ? data.results : [];
 
-        return rows.map((row) => {
-          return (
-            <MenuItem key={row.id} value={row.id}>
-              {renderLabel(row)}
-            </MenuItem>
-          );
-        });
+        return rows.map((row) => (
+          <MenuItem key={row.id} value={row.id}>
+            {renderLabel(row)}
+          </MenuItem>
+        ));
       }
 
       if (!loading && !data) {
