@@ -4,57 +4,93 @@
   allowedTypes: [],
   orientation: 'HORIZONTAL',
   jsx: (() => {
-    // Component used on /trending-business-topics to provide clickable badge filters.
-    // Each category (topic, sector, product) maintains its own state.
-    // Clicking a badge updates the corresponding filter state (e.g., clicking a topic should triggers setFilterTopic).
-    // These states are combined into a filter object, where each value is translated to its UUID.
-    // After translation, the onFilterChange event is triggered to apply the advanced filter logic.
-    const { debugLogging } = options;
-    const isDev = B.env === 'dev';
+    const { debugLogging, modelId } = options;
+    const { env } = B;
+    const isDev = env === 'dev';
 
-    // Used for optional console logging
-    const debugLog = (...message) => {
+    const debugLog = (message, ...optionalParams) => {
       if (debugLogging) {
-        console.log(message);
+        console.log(message, optionalParams);
       }
     };
 
-    // This function translates the normal database names to the corresponding identifiers
-    // to use with the Advanced Filter interaction provided by the platform.
-    function translateKeys(input, availableProps) {
-      if (!availableProps || typeof availableProps !== 'object') return input;
+    // ------------ schema builder (P_UUID) ------------
+    function buildRelationalMap(
+      propertiesById,
+      rootModelId,
+      { depth = 1 } = {},
+    ) {
+      const ALL = Object.values(propertiesById);
+      const propsByModel = new Map();
+      for (const p of ALL) {
+        if (!propsByModel.has(p.modelId)) propsByModel.set(p.modelId, []);
+        propsByModel.get(p.modelId).push(p);
+      }
 
-      // build name → id lookup
-      const nameToId = Object.values(availableProps).reduce((map, prop) => {
-        if (prop && typeof prop === 'object' && prop.name && prop.id) {
-          map[prop.name] = prop.id;
+      const REL_KINDS = new Set([
+        'belongs_to',
+        'has_many',
+        'has_and_belongs_to_many',
+      ]);
+
+      function makeNode(modelId, d, visiting) {
+        const props = propsByModel.get(modelId) || [];
+        const node = {};
+
+        for (const p of props) {
+          // Store the UUID under P_UUID (never "id")
+          node[p.name] = { P_UUID: p.id };
+
+          // Expand relations
+          if (REL_KINDS.has(p.kind) && p.referenceModelId && d > 0) {
+            const toModel = p.referenceModelId;
+            if (!visiting.has(toModel)) {
+              visiting.add(toModel);
+              const child = makeNode(toModel, d - 1, visiting);
+              // merge children (keep P_UUID alongside)
+              Object.assign(node[p.name], child);
+              visiting.delete(toModel);
+            }
+          }
         }
-        return map;
-      }, {});
-
-      function recurse(node) {
-        // 1) arrays: map each element
-        if (Array.isArray(node)) {
-          return node.map(recurse);
-        }
-
-        // 2) objects: rename keys if possible, recurse values
-        if (node && typeof node === 'object') {
-          return Object.keys(node).reduce((out, key) => {
-            const newKey = nameToId[key] || key;
-            out[newKey] = recurse(node[key]);
-            return out;
-          }, {});
-        }
-
-        // 3) primitives: return as‐is
         return node;
       }
 
-      return recurse(input);
+      return makeNode(rootModelId, depth, new Set([rootModelId]));
     }
 
-    // Deeply merges two filter objects into one unified object.
+    // ------------ translator (uses P_UUID) ------------
+    function translateWithRelationalMap(input, schemaNode) {
+      if (Array.isArray(input)) {
+        return input.map((v) => translateWithRelationalMap(v, schemaNode));
+      }
+      if (input && typeof input === 'object') {
+        const out = {};
+        for (const key of Object.keys(input)) {
+          const val = input[key];
+
+          // If key exists in schema, translate to its P_UUID; else keep key as-is (operators, etc.)
+          const entry = schemaNode?.[key];
+          const newKey = entry?.P_UUID || key;
+
+          // Child schema = all children except P_UUID
+          let childSchema = schemaNode;
+          if (entry && typeof entry === 'object') {
+            childSchema = Object.fromEntries(
+              Object.entries(entry).filter(([k]) => k !== 'P_UUID'),
+            );
+          }
+
+          out[newKey] = translateWithRelationalMap(val, childSchema);
+        }
+        return out;
+      }
+      return input;
+    }
+    const properties = isDev ? {} : window.artifact.properties || {};
+
+    const relationalMap = buildRelationalMap(properties, modelId);
+
     function deepMerge(A, B) {
       const OPS = new Set([
         'eq',
@@ -68,10 +104,8 @@
         'matches',
         'contains',
       ]);
-
       const isPlainObject = (o) =>
         o && typeof o === 'object' && !Array.isArray(o);
-
       const isOpObj = (o) =>
         isPlainObject(o) && Object.keys(o).every((k) => OPS.has(k));
 
@@ -110,7 +144,6 @@
         return out;
       }, {});
     }
-
     const getBadgeChild = (e) => {
       const badge = e.currentTarget;
       const data = badge.childNodes[0].getHTML();
@@ -149,7 +182,7 @@
         const value = String(getBadgeChild(e));
         const key = value.trim().toLowerCase();
 
-        console.log({value}, {key})
+        console.log({ value }, { key });
         setSelectedProducts((prev) => {
           const next = new Map(prev);
           if (next.has(key)) {
@@ -205,36 +238,36 @@
         sectors.length > 0 || topics.length > 0 || products.length > 0
           ? {
               _and: [
-                translateKeys(
-                  { _and: [{ status: { eq: 'Published' } }] },
-                  window.artifact.properties,
-                ),
+                { _and: [{ status: { eq: 'Published' } }] },
                 {
-                  _or: translateKeys(
-                    [
-                      ...sectors.map((s) => ({ sectors: { name: { eq: s } } })),
-                      ...topics.map((t) => ({
-                        categories: { name: { eq: t } },
-                      })),
-                      ...products.map((p) => ({
-                        products: { name: { eq: p } },
-                      })),
-                    ],
-                    window.artifact.properties,
-                  ),
+                  _or: [
+                    ...sectors.map((s) => ({ sectors: { name: { eq: s } } })),
+                    ...topics.map((t) => ({
+                      categories: { name: { eq: t } },
+                    })),
+                    ...products.map((p) => ({
+                      products: { name: { eq: p } },
+                    })),
+                  ],
                 },
               ],
             }
           : {
-              _and: translateKeys(
-                [{ status: { eq: 'Published' } }],
-                window.artifact.properties,
-              ),
+              _and: [{ status: { eq: 'Published' } }],
             };
 
       debugLog({ where: newFilter });
 
-      if (sectors.length === 0 && topics.length === 0 && products.length === 0) {
+      const interactionFilter = translateWithRelationalMap(
+        newFilter,
+        relationalMap,
+      );
+
+      if (
+        sectors.length === 0 &&
+        topics.length === 0 &&
+        products.length === 0
+      ) {
         console.warn('No entries for filter! Resetting filter');
         B.triggerEvent('onResetFilter', undefined);
         return;
@@ -251,19 +284,23 @@
 
       if (Object.keys(newFilter).length > 0) {
         B.triggerEvent('onFilterChange', {
-          where: newFilter,
+          where: interactionFilter,
         });
       } else {
         B.triggerEvent('onFilterChange', {
           where: {
-            _and: translateKeys(
+            _and: translateWithRelationalMap(
               [{ status: { eq: 'Published' } }],
-              window.artifact.properties,
+              relationalMap,
             ),
           },
         });
       }
-    }, [selectedSectors.values(), selectedTopics.values(), selectedProducts.values()]); // ✅ watch both filters
+    }, [
+      selectedSectors.values(),
+      selectedTopics.values(),
+      selectedProducts.values(),
+    ]); // ✅ watch both filters
 
     if (isDev) {
       return <div className={classes.dev}>Combine filter</div>;
