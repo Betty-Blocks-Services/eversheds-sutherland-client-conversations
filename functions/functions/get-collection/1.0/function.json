@@ -1,0 +1,51 @@
+{
+  "category": "CRUD",
+  "description": "Fetches a collection based on the provided ID's",
+  "icon": {
+    "color": "Purple",
+    "name": "DataIcon"
+  },
+  "label": "Get Collection",
+  "options": [
+    {
+      "name": "model",
+      "label": "Model",
+      "meta": {
+        "type": "Model",
+        "validations": { "required": true }
+      },
+      "info": "The model which contains the records you want to fetch"
+    },
+    {
+      "name": "ids",
+      "label": "ID's",
+      "meta": {
+        "type": "Value",
+        "allowedKinds": ["ARRAY"],
+        "validations": { "required": true }
+      },
+      "info": "An array of ID's"
+    },
+    {
+      "name": "properties",
+      "label": "Properties",
+      "meta": {
+        "type": "MultilineText",
+        "placeholder": "id\nname\n..."
+      },
+      "info": "Type out the database names of the properties in GQL format"
+    },
+    {
+      "name": "result",
+      "label": "Result",
+      "meta": {
+        "type": "Output",
+        "output": {
+          "type": "Collection",
+          "model": "model"
+        }
+      }
+    }
+  ],
+  "yields": "NONE"
+}
