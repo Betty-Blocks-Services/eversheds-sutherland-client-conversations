@@ -4,50 +4,92 @@
   allowedTypes: [],
   orientation: 'HORIZONTAL',
   jsx: (() => {
-    const isDev = B.env === 'dev';
-    const { debugLogging } = options;
+    const { debugLogging, modelId } = options;
+    const { env } = B;
+    const isDev = env === 'dev';
 
-    const debugLog = (message) => {
+    const debugLog = (message, ...optionalParams) => {
       if (debugLogging) {
-        console.log(message);
+        console.log(message, optionalParams);
       }
     };
 
-    const [filterTopic, setFilterTopic] = useState({});
-    const [filterSector, setFilterSector] = useState({});
-    const [filterProduct, setFilterProduct] = useState({});
-    const [filterSearch, setFilterSearch] = useState({});
+    // ------------ schema builder (P_UUID) ------------
+    function buildRelationalMap(
+      propertiesById,
+      rootModelId,
+      { depth = 1 } = {},
+    ) {
+      const ALL = Object.values(propertiesById);
+      const propsByModel = new Map();
+      for (const p of ALL) {
+        if (!propsByModel.has(p.modelId)) propsByModel.set(p.modelId, []);
+        propsByModel.get(p.modelId).push(p);
+      }
 
-    const [filterStatus, setFilterStatus] = useState({});
+      const REL_KINDS = new Set([
+        'belongs_to',
+        'has_many',
+        'has_and_belongs_to_many',
+      ]);
 
-    // This function translates the normal database names to the correspdoning identifiers
-    // to use with the Advanced Filter interaction provided by the platform.
-    function translateKeys(input, availableProps) {
-      // build name → id lookup
-      const nameToId = Object.values(availableProps).reduce((map, prop) => {
-        map[prop.name] = prop.id;
-        return map;
-      }, {});
+      function makeNode(modelId, d, visiting) {
+        const props = propsByModel.get(modelId) || [];
+        const node = {};
 
-      function recurse(node) {
-        // 1) arrays: map each element
-        if (Array.isArray(node)) {
-          return node.map(recurse);
+        for (const p of props) {
+          // Store the UUID under P_UUID (never "id")
+          node[p.name] = { P_UUID: p.id };
+
+          // Expand relations
+          if (REL_KINDS.has(p.kind) && p.referenceModelId && d > 0) {
+            const toModel = p.referenceModelId;
+            if (!visiting.has(toModel)) {
+              visiting.add(toModel);
+              const child = makeNode(toModel, d - 1, visiting);
+              // merge children (keep P_UUID alongside)
+              Object.assign(node[p.name], child);
+              visiting.delete(toModel);
+            }
+          }
         }
-        // 2) objects: rename keys if possible, recurse values
-        if (node && typeof node === 'object') {
-          return Object.keys(node).reduce((out, key) => {
-            const newKey = nameToId[key] || key;
-            out[newKey] = recurse(node[key]);
-            return out;
-          }, {});
-        }
-        // 3) primitives: return as‐is
         return node;
       }
 
-      return recurse(input);
+      return makeNode(rootModelId, depth, new Set([rootModelId]));
     }
+
+    // ------------ translator (uses P_UUID) ------------
+    function translateWithRelationalMap(input, schemaNode) {
+      if (Array.isArray(input)) {
+        return input.map((v) => translateWithRelationalMap(v, schemaNode));
+      }
+      if (input && typeof input === 'object') {
+        const out = {};
+        for (const key of Object.keys(input)) {
+          const val = input[key];
+
+          // If key exists in schema, translate to its P_UUID; else keep key as-is (operators, etc.)
+          const entry = schemaNode?.[key];
+          const newKey = entry?.P_UUID || key;
+
+          // Child schema = all children except P_UUID
+          let childSchema = schemaNode;
+          if (entry && typeof entry === 'object') {
+            childSchema = Object.fromEntries(
+              Object.entries(entry).filter(([k]) => k !== 'P_UUID'),
+            );
+          }
+
+          out[newKey] = translateWithRelationalMap(val, childSchema);
+        }
+        return out;
+      }
+      return input;
+    }
+    const properties = isDev ? {} : window.artifact.properties || {};
+
+    const relationalMap = buildRelationalMap(properties, modelId);
 
     function deepMerge(A, B) {
       const OPS = new Set([
@@ -102,6 +144,12 @@
         return out;
       }, {});
     }
+
+    const [filterTopic, setFilterTopic] = useState({});
+    const [filterSector, setFilterSector] = useState({});
+    const [filterProduct, setFilterProduct] = useState({});
+    const [filterSearch, setFilterSearch] = useState({});
+    const [filterStatus, setFilterStatus] = useState({});
 
     // This is where each of the fields are defined.
     // By defining these functions, each field can have its own logic for applying the filter.
@@ -169,9 +217,9 @@
       //     }
       //   }
       // }
-      const translatedFilter = translateKeys(
+      const translatedFilter = translateWithRelationalMap(
         newFilter,
-        window.artifact.properties,
+        relationalMap,
       );
 
       debugLog({ translatedFilter });

@@ -8,9 +8,9 @@
     const { env } = B;
     const isDev = env === 'dev';
 
-    const debugLog = (message) => {
+    const debugLog = (message, ...optionalParams) => {
       if (debugLogging) {
-        console.log(message);
+        console.log(message, optionalParams);
       }
     };
 
@@ -183,11 +183,17 @@
       //  }
       // }
 
-      const newFilter = {
-        ...filterMessage,
-        _and: [...filterDateStartRange, ...filterDateEndRange],
-      };
+      const hasStart = Object.keys(filterDateStartRange).length > 0;
+      const hasEnd = Object.keys(filterDateEndRange).length > 0;
 
+      const newFilter = { ...filterMessage };
+
+      if (hasStart || hasEnd) {
+        newFilter._and = [];
+
+        if (hasStart) newFilter._and.push(filterDateStartRange);
+        if (hasEnd) newFilter._and.push(filterDateEndRange);
+      }
       debugLog({ newFilter });
 
       if (Object.keys(newFilter).length === 0) {

@@ -1,4 +1,4 @@
-import { variable, toggle, model } from '@betty-blocks/component-sdk';
+import { toggle, model } from '@betty-blocks/component-sdk';
 import { advanced } from '../../advanced';
 
 export const categories = [
