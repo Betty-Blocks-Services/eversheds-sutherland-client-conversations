@@ -182,7 +182,6 @@
         const value = String(getBadgeChild(e));
         const key = value.trim().toLowerCase();
 
-        console.log({ value }, { key });
         setSelectedProducts((prev) => {
           const next = new Map(prev);
           if (next.has(key)) {
@@ -300,7 +299,7 @@
       selectedSectors.values(),
       selectedTopics.values(),
       selectedProducts.values(),
-    ]); // ✅ watch both filters
+    ]);
 
     if (isDev) {
       return <div className={classes.dev}>Combine filter</div>;

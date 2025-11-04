@@ -1,4 +1,4 @@
-import { toggle } from '@betty-blocks/component-sdk';
+import { toggle, model } from '@betty-blocks/component-sdk';
 import { advanced } from '../../advanced';
 
 export const categories = [
@@ -10,6 +10,7 @@ export const categories = [
 ];
 
 export const firmSearchCombineFilterOptions = {
+  modelId: model('Model'),
   debugLogging: toggle('Debug Logging'),
 
   ...advanced('FirmSearchCombineFilter'),
