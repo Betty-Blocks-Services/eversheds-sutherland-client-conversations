@@ -148,6 +148,8 @@
 
         const value = String(getBadgeChild(e));
         const key = value.trim().toLowerCase();
+
+        console.log({value}, {key})
         setSelectedProducts((prev) => {
           const next = new Map(prev);
           if (next.has(key)) {
@@ -163,7 +165,6 @@
         const filterValue = getBadgeChild(e);
         const value = String(getBadgeChild(e));
         const key = value.trim().toLowerCase();
-
         debugLog('Value from interaction:', filterValue);
         setSelectedTopics((prev) => {
           const next = new Map(prev);
@@ -180,6 +181,7 @@
         e.preventDefault();
         setSelectedSectors(new Map());
         setSelectedTopics(new Map());
+        setSelectedProducts(new Map());
       });
     }, []);
 
@@ -200,7 +202,7 @@
       const topics = Array.from(selectedTopics.values()) || [];
       const products = Array.from(selectedProducts.values()) || [];
       const newFilter =
-        sectors.length > 0 || topics.length > 0
+        sectors.length > 0 || topics.length > 0 || products.length > 0
           ? {
               _and: [
                 translateKeys(
@@ -232,7 +234,7 @@
 
       debugLog({ where: newFilter });
 
-      if (sectors.length === 0 && topics.length === 0) {
+      if (sectors.length === 0 && topics.length === 0 && products.length === 0) {
         console.warn('No entries for filter! Resetting filter');
         B.triggerEvent('onResetFilter', undefined);
         return;
@@ -261,7 +263,7 @@
           },
         });
       }
-    }, [selectedSectors.values(), selectedTopics.values()]); // ✅ watch both filters
+    }, [selectedSectors.values(), selectedTopics.values(), selectedProducts.values()]); // ✅ watch both filters
 
     if (isDev) {
       return <div className={classes.dev}>Combine filter</div>;
